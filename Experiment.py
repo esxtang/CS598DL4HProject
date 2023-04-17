@@ -96,7 +96,7 @@ def imputation(imputation_strategy, latest_labs, train_indices, max_iterations =
     return mice_imputed_labs
 
 ## Training
-def train(imputed_labs, outcomes, all_train_indices, model_name, hyperparameters, normalization = True, regularization = True):
+def train(imputed_labs, outcomes, all_train_indices, model_name, hyperparameters, regularization, normalization = True):
   # Split training data into train, validation, and test
   train_index, test_index = train_test_split(all_train_indices, train_size = 0.9, random_state = 0)
   train_index, validation_index = train_test_split(train_index, train_size = 0.9, random_state = 0)
@@ -184,11 +184,9 @@ hyperparameters = {
     }
 }
 
-# model_name = 'logistic_regression'
-model_name = 'mlp_classifier'
+model_name = 'logistic_regression'
+# model_name = 'mlp_classifier'
 
-normalization = True
-# normalization = False
 regularization = True
 # regularization = False
 
@@ -201,7 +199,7 @@ for strategy, iterations in imputation_iterations.items():
   for i in range(iterations):
     print('.............................', strategy, i, '.............................')
     imputed_labs = imputation(strategy, latest_labs, train_indices)
-    prediction = train(imputed_labs, outcomes, train_indices, model_name, hyperparameters, normalization, regularization)
+    prediction = train(imputed_labs, outcomes, train_indices, model_name, hyperparameters, regularization)
     predictions.append(prediction)
   
   # Average multiple imputations models
