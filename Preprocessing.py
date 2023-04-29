@@ -1,6 +1,4 @@
-### PREPROCESSING
-
-## Start tracking time and memory usage
+### Start tracking time and memory usage
 # Import time & memory modules
 import time
 import tracemalloc
@@ -9,16 +7,19 @@ import tracemalloc
 start = time.time()
 tracemalloc.start()
 
-## Import libraries
+
+### Import libraries
 import numpy as np
 import pandas as pd
 from IPython.display import display
 
-## Set data paths
-PATH = '/home/etang/Desktop/CS598DL4HProject/PreprocessedData/'  # Edit to your path
-MIMIC_DATA_PATH = '/home/etang/Desktop/CS598DL4HProject/MimicData/'  # Edit to your path
 
-## Get MIMIC-III data
+### Path for file access
+MIMIC_DATA_PATH = './MimicData/'
+OUTPUT_PATH = './PreprocessedData/'
+
+
+### Get MIMIC-III data
 # Read itemid_to_variable_map from MIMIC-Extract 
 # https://github.com/MLforHealth/MIMIC_Extract/blob/master/README.md
 MIMIC_Extract_itemid_to_variable_map = pd.read_csv(
@@ -42,10 +43,12 @@ MIMIC_III_admissions = pd.read_csv(
     usecols = ['SUBJECT_ID', 'HADM_ID', 'ADMISSION_TYPE', 'HOSPITAL_EXPIRE_FLAG', 'ADMITTIME', 'DISCHTIME', 'DEATHTIME', 'ETHNICITY', 'INSURANCE', 'DIAGNOSIS'],
     index_col = 'SUBJECT_ID',
     parse_dates = ['ADMITTIME', 'DISCHTIME', 'DEATHTIME'])
-    
-## Clean Patient and Admission data
+
+
+### Clean Patient and Admission data
 # Combine PATIENTS and ADMISSIONS data
 admissions = MIMIC_III_admissions.merge(MIMIC_III_patients, on = 'SUBJECT_ID')
+
 print(admissions.shape)
 admissions.head()
 
@@ -59,7 +62,6 @@ admissions['LOS_DEATH'] = (admissions['DEATHTIME'] - admissions['ADMITTIME']) / 
 admissions['LOS_DISCHARGE'] = admissions['DISCHTIME'] - admissions['ADMITTIME']
 
 # Add Age (length of time between Admission and DOB, unit is years)
-# original code has wrong age for index 58972, subject_id 98797 - should be 87 yrs but original code calcs it as 88 yrs (ALSO wrong for index 3287 and 44493)
 admissions['AGE'] = (admissions['ADMITTIME'].dt.year 
                             - admissions['DOB'].dt.year 
                             - ((admissions['ADMITTIME'].dt.month < admissions['DOB'].dt.month)
@@ -71,12 +73,12 @@ excluded_patients = admissions.copy()
 excluded_patients['AGE_ORIGINAL'] = [date.days for date in excluded_patients['ADMITTIME'].dt.to_pydatetime() - excluded_patients['DOB'].dt.to_pydatetime()]
 excluded_patients['AGE_ORIGINAL'] /= 365
 excluded_patients = excluded_patients[(excluded_patients['AGE_ORIGINAL'] > 18) & (excluded_patients['AGE'] < 18)]
-excluded_labs = MIMIC_III_lab_events.loc[excluded_patients.index]
 
 print('Number of patients excluded:', excluded_patients.shape[0])
 display(excluded_patients)
-print('Number of labs excluded:', excluded_labs.shape[0])
-excluded_labs.head()
+if excluded_patients.index.isin(MIMIC_III_lab_events.index):
+  excluded_labs = MIMIC_III_lab_events.loc[excluded_patients.index]
+  print('Number of labs excluded:', excluded_labs.shape[0])
 
 # Keep only adult patients
 adult_admissions = admissions[admissions['AGE'] >= 18]
@@ -90,14 +92,17 @@ LOSgte1_adult_admissions = adult_admissions[adult_admissions['LOS_DISCHARGE'] >=
 print(LOSgte1_adult_admissions.shape)
 LOSgte1_adult_admissions.head()
 
-## Clean Item Id to Variable Map
+
+### Clean Item Id to Variable Map
 # Remove rows with blank LEVEL2, COUNT <= 0, or STATUS != 'ready'
 itemid_to_variable_map = MIMIC_Extract_itemid_to_variable_map.dropna(subset = ['LEVEL2'])
 itemid_to_variable_map = itemid_to_variable_map[(itemid_to_variable_map['COUNT'] > 0) & (itemid_to_variable_map['STATUS'] == 'ready')]
+
 print(itemid_to_variable_map.shape)
 itemid_to_variable_map.head()
 
-## Clean Lab data
+
+### Clean Lab data
 # Select only necessary columns
 lab_events = MIMIC_III_lab_events[['HADM_ID', 'ITEMID', 'CHARTTIME', 'VALUENUM']]
 
@@ -123,26 +128,29 @@ day1_lab_events['LOS_LAB_EVENT'] = day1_lab_events['LOS_LAB_EVENT'] / one_day
 print(day1_lab_events.shape)
 day1_lab_events.head()
 
-## Reformat Lab data
-# # Select certain columns
+
+### Reformat Lab data
+# Select certain columns
 day1_lab_events = day1_lab_events[['LOS_LAB_EVENT', 'Lab', 'VALUENUM']]
 
-# # Pivot labs into columns
+# Pivot labs into columns
 day1_lab_events = day1_lab_events.reset_index().pivot(index = ['SUBJECT_ID', 'LOS_LAB_EVENT'], columns = 'Lab')
 
-# # Remove if all lab values are NA
+# Remove if all lab values are NA
 day1_lab_events = day1_lab_events.dropna(how = 'all')
 
 print(day1_lab_events.shape)
 day1_lab_events.head()
 
-## Filter Patient Admissions to only include those with Lab records
+
+### Filter Patient Admissions set to only include those with Lab records
 LOSgte1_adult_admissions = LOSgte1_adult_admissions.loc[day1_lab_events.index.get_level_values(0).unique()]
 
 print(LOSgte1_adult_admissions.shape)
 LOSgte1_adult_admissions.head()
 
-## Convert values to binary labels
+
+### Convert values to binary labels
 labeled_LOSgte1_adult_admissions = LOSgte1_adult_admissions.copy(deep = True)
 
 labeled_LOSgte1_adult_admissions['Outcome'] = (labeled_LOSgte1_adult_admissions['LOS_DEATH'] < 8).replace({True: 'Death', False: 'Alive'})
@@ -153,82 +161,19 @@ labeled_LOSgte1_adult_admissions['INSURANCE'] = (labeled_LOSgte1_adult_admission
 print(labeled_LOSgte1_adult_admissions.shape)
 labeled_LOSgte1_adult_admissions.head()
 
-## Save data
-labeled_LOSgte1_adult_admissions.to_csv(PATH + 'preprocessed_labeled_outcomes.csv')
-day1_lab_events.to_csv(PATH + 'preprocessed_labs.csv')
 
-## Clinical Presence Evidence
-# Compute the number of observations for the different groups of interest and compare them using the t-test.
+### Save files
+labeled_LOSgte1_adult_admissions.to_csv(OUTPUT_PATH + 'preprocessed_labeled_outcomes.csv')
+day1_lab_events.to_csv(OUTPUT_PATH + 'preprocessed_labs.csv')
 
-import scipy.stats
-labs = day1_lab_events.copy()
-outcomes = labeled_LOSgte1_adult_admissions.copy()
 
-lab_event_count = labs.groupby('SUBJECT_ID').size()
-
-print('Lab Event Statistics')
-# Average # of lab events by outcome
-display(pd.DataFrame({'Average': lab_event_count.groupby(outcomes['Outcome']).mean(), 
-                      'Standard Deviation': lab_event_count.groupby(outcomes['Outcome']).std()}))
-print('t-statistic:', scipy.stats.ttest_ind(lab_event_count[outcomes['Outcome'] == "Alive"], lab_event_count[outcomes['Outcome'] == "Death"])[0])
-print('p-value:', scipy.stats.ttest_ind(lab_event_count[outcomes['Outcome'] == "Alive"], lab_event_count[outcomes['Outcome'] == "Death"])[1])
-# Average # of lab events by gender
-display(pd.DataFrame({'Average': lab_event_count.groupby(outcomes['GENDER']).mean(), 
-                      'Standard Deviation': lab_event_count.groupby(outcomes['GENDER']).std()}))
-print('t-statistic:', scipy.stats.ttest_ind(lab_event_count[outcomes['GENDER'] == "Female"], lab_event_count[outcomes['GENDER'] == "Male"])[0])
-print('p-value:', scipy.stats.ttest_ind(lab_event_count[outcomes['GENDER'] == "Female"], lab_event_count[outcomes['GENDER'] == "Male"])[1])
-# Average # of lab events by ethnicity
-display(pd.DataFrame({'Average': lab_event_count.groupby(outcomes['ETHNICITY']).mean(), 
-                      'Standard Deviation': lab_event_count.groupby(outcomes['ETHNICITY']).std()}))
-print('t-statistic:', scipy.stats.ttest_ind(lab_event_count[outcomes['ETHNICITY'] == 'Black'], lab_event_count[outcomes['ETHNICITY'] == 'Non Black'])[0])
-print('p-value:', scipy.stats.ttest_ind(lab_event_count[outcomes['ETHNICITY'] == 'Black'], lab_event_count[outcomes['ETHNICITY'] == 'Non Black'])[1])
-# Average # of lab events by insurance
-display(pd.DataFrame({'Average': lab_event_count.groupby(outcomes['INSURANCE']).mean(), 
-                      'Standard Deviation': lab_event_count.groupby(outcomes['INSURANCE']).std()}))
-print('t-statistic:', scipy.stats.ttest_ind(lab_event_count[outcomes['INSURANCE'] == 'Public'], lab_event_count[outcomes['INSURANCE'] == 'Private'])[0])
-print('p-value:', scipy.stats.ttest_ind(lab_event_count[outcomes['INSURANCE'] == 'Public'], lab_event_count[outcomes['INSURANCE'] == 'Private'])[1])
-
-## Lab Events over time
-import seaborn as sns
-import matplotlib.pyplot as plt
-sns.set_theme(style="darkgrid")
-sns.set_theme(font_scale = 1, rc={"figure.dpi":200, 'savefig.dpi':200})
-
-bins = np.linspace(0, 24, endpoint = True)
-evolution = labs.groupby('SUBJECT_ID').apply(lambda x: pd.DataFrame({'Cumulative number of Lab Events': np.histogram(24 * x.index.get_level_values('LOS_LAB_EVENT'), bins)[0].cumsum(), 'Hour after admission': bins[1:]}))
-
-fig, axes = plt.subplots(2, 2, figsize=(18, 10))
-sns.lineplot(ax = axes[0, 0], data = evolution.join(outcomes['Outcome']), 
-             x = "Hour after admission", y = "Cumulative number of Lab Events", 
-             hue = 'Outcome')
-
-sns.lineplot(ax = axes[0, 1], data = evolution.join(outcomes['GENDER']), 
-             x = "Hour after admission", y = "Cumulative number of Lab Events", 
-             hue = 'GENDER')
-
-sns.lineplot(ax = axes[1, 0], data = evolution.join(outcomes['ETHNICITY']), 
-             x = "Hour after admission", y = "Cumulative number of Lab Events", 
-             hue = 'ETHNICITY')
-
-sns.lineplot(ax = axes[1, 1], data = evolution.join(outcomes['INSURANCE']), 
-             x = "Hour after admission", y = "Cumulative number of Lab Events", 
-             hue = 'INSURANCE', hue_order = ['Private', 'Public'])
-
-## Report time and memory usage
+### Report time and memory usage
 # Record end time
 end = time.time()
 
-# Print the difference between start and end time in milli. secs
-print("The time of execution of the above program is :", (end-start) * 10**3, "ms")
-
-# Display memory usage
-print("The memory usage of the above program (current memory, peak memory) is :", tracemalloc.get_traced_memory())
-
-computational_requirements = pd.DataFrame(
+display(pd.DataFrame(
     data = {'Preprocessing': [(end - start)/60, tracemalloc.get_traced_memory()[1]/10**9]},
-    index = ['Time (min)', 'Memory Usage (GB)'])
-display(computational_requirements)
+    index = ['Time (min)', 'Memory Usage (GB)']))
  
 # Stopping the memory trace
 tracemalloc.stop()
-

@@ -1,6 +1,4 @@
-### EXPERIMENT
-
-## Start tracking time and memory usage
+### Start tracking time and memory usage
 # Import time & memory modules
 import time
 import tracemalloc
@@ -9,7 +7,8 @@ import tracemalloc
 start = time.time()
 tracemalloc.start()
 
-## Import libraries
+
+### Import libraries
 import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer
@@ -18,36 +17,41 @@ from sklearn.model_selection import ParameterSampler, train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
+from IPython.display import display
 
-## Set data paths
-PREPROCESSED_PATH = '/home/etang/Desktop/CS598DL4HProject/PreprocessedData/'  # Edit to your path
-EXPERIMENT_PATH = '/home/etang/Desktop/CS598DL4HProject/ExperimentResults/'  # Edit to your path
 
-## Get preprocessed data
-labs = pd.read_csv(PREPROCESSED_PATH + 'preprocessed_labs.csv', index_col = [0, 1], header = [0, 1])
+### Set path for getting data
+PREPROCESSED_DATA_PATH = './PreprocessedData/'
+OUTPUT_PATH = './ExperimentResults/'
+
+
+### Get preprocessed data
+labs = pd.read_csv(PREPROCESSED_DATA_PATH + 'preprocessed_labs.csv', index_col = [0, 1], header = [0, 1])
 labs.head()
 
-outcomes = pd.read_csv(PREPROCESSED_PATH + 'preprocessed_labeled_outcomes.csv', index_col = 0)
-outcomes['Outcome'] = outcomes['Outcome'] == 'Death' # Translate values to True if Death, False if Alive
+outcomes = pd.read_csv(PREPROCESSED_DATA_PATH + 'preprocessed_labeled_outcomes.csv', index_col = 0)
+# Translate values to True if Death, False if Alive
+outcomes['Outcome'] = outcomes['Outcome'] == 'Death'
 outcomes.head()
 
-## Select training data
+
+### Select Patient training set, Labs, Demographic data, and Missingness Indicators
 train_indices = outcomes.sample(frac = 0.8, random_state = 0).index.sort_values()
-# train_outcomes = pd.Series(outcomes.index.isin(train_indices), index = outcomes.index)
-# print(train_indices)
 
 print('Total patients: {}'.format(len(outcomes)))
 print('Training patients: {}'.format(len(train_indices)))
 
-## Imputation
 # Use only latest lab record for each patient
 latest_labs = labs.groupby('SUBJECT_ID').last()
 
+# Flag patients in minority population for Group MICE and Group MICE Missing (TRUE = patient is in minority group)
 minority_population = pd.concat([outcomes['ETHNICITY'] == 'Black', outcomes['GENDER'] == 'Female', outcomes['INSURANCE'] == 'Public'], axis = 1)
 
 # Count columns for Group MICE Missing
 counts = latest_labs.isna().add_suffix('_count')
 
+
+### Imputation method
 def imputation(imputation_strategy, latest_labs, train_indices, max_iterations = 10):
   # Single median imputation
   if imputation_strategy == 'Median':
@@ -88,15 +92,12 @@ def imputation(imputation_strategy, latest_labs, train_indices, max_iterations =
         mice_imputed_labs[lab][missing_lab_values[lab]] = linear_reg_model.predict(x) + epsilon
     
     if 'Group' in imputation_strategy:
-      # Remove the group columns
-      # mice_imputed_labs = mice_imputed_labs.iloc[:, :-3] # original only removes 1 col? .iloc[:, :-1]
-      # mice_imputed_labs = mice_imputed_labs.loc[:, ~mice_imputed_labs.columns.isin(['ETHNICITY', 'GENDER', 'INSURANCE'])]
-      mice_imputed_labs = mice_imputed_labs.rename(columns={'ETHNICITY': ('VALUENUM', 'ETHNICITY'), 'GENDER': ('VALUENUM', 'GENDER'), 'INSURANCE': ('VALUENUM', 'INSURANCE')}) ### MY FIX   
-    print(mice_imputed_labs)
+      mice_imputed_labs = mice_imputed_labs.rename(columns={'ETHNICITY': ('VALUENUM', 'ETHNICITY'), 'GENDER': ('VALUENUM', 'GENDER'), 'INSURANCE': ('VALUENUM', 'INSURANCE')})  
     return mice_imputed_labs
 
-## Training
-def train(imputed_labs, outcomes, all_train_indices, model_name, hyperparameters, regularization, normalization = True):
+
+### Model training method
+def train(imputed_labs, outcomes, all_train_indices, model_name, hyperparameters, regularization = True, normalization = True):
   # Split training data into train, validation, and test
   train_index, test_index = train_test_split(all_train_indices, train_size = 0.9, random_state = 0)
   train_index, validation_index = train_test_split(train_index, train_size = 0.9, random_state = 0)
@@ -123,11 +124,7 @@ def train(imputed_labs, outcomes, all_train_indices, model_name, hyperparameters
   if (model_name == 'logistic_regression') & (not regularization):
     hyperparameters[model_name]['penalty'] = [None] 
     hyperparameters[model_name]['C'] = [10000000000] # Setting penalty=None will ignore the C parameter
-    
-  print('xxxxx Initial Model Info xxxxx')
-  print('Model:', model_name, '-- Normalization:', normalization, '-- Regularization:', regularization)
-  print(hyperparameters[model_name])
-  
+   
   # Search for best model and hyperparameters
   best_neg_log_likelihood = np.inf
   best_hyperparameter = None
@@ -145,20 +142,14 @@ def train(imputed_labs, outcomes, all_train_indices, model_name, hyperparameters
         best_hyperparameter = hyperparams
         best_model = model
         best_neg_log_likelihood = neg_log_likelihood
-  print("============= Best Parameters =============")
-  print("Best Hyperparameter:")
-  print(best_hyperparameter)
-  print("Best model:")
-  print(best_model)
-  print("Best Neg Log Likelihood:")
-  print(best_neg_log_likelihood)
   
   # Predict using best model
   prediction = pd.DataFrame(best_model.predict_proba(imputed_labs), index = outcomes.index)
   result = pd.concat([prediction, train_test_labels], axis = 1)
   return result
 
-## Parameters
+
+### Select model parameters
 # Set parameters
 imputation_iterations = {
     'Median': 100,
@@ -179,26 +170,28 @@ hyperparameters = {
         'hidden_layer_sizes': [(5, 2)],
         'activation': ['logistic'],
         'solver': ['adam'], 
-        # 'alpha': [0, 0.0001, 0.01],
         'max_iter': [1000]
     }
 }
-
-model_name = 'logistic_regression'
-# model_name = 'mlp_classifier'
-
+# Ablation: Remove regularization
 regularization = True
 # regularization = False
 
-## Run experiments
+# Experiment: Replace logistic regression with MLP Classifier
+model_name = 'logistic_regression'
+# model_name = 'mlp_classifier'
+
+
+### Impute data, train model, and store predictions
 for strategy, iterations in imputation_iterations.items():
-  print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Imputation strategy: ' + strategy + ' <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+  print('Imputation strategy:', strategy)
   print('Iterations: ' + str(iterations))
 
   predictions = []
   for i in range(iterations):
-    print('.............................', strategy, i, '.............................')
+    # Impute missing data
     imputed_labs = imputation(strategy, latest_labs, train_indices)
+    # Train model and store predictions
     prediction = train(imputed_labs, outcomes, train_indices, model_name, hyperparameters, regularization)
     predictions.append(prediction)
   
@@ -207,22 +200,16 @@ for strategy, iterations in imputation_iterations.items():
   predictions_death_values = pd.concat([p[1] for p in predictions], axis = 1)
   result = pd.concat([predictions_death_values.mean(axis = 1).rename('Mean'), predictions_death_values.std(axis = 1).rename('Std'), last_train_test_labels], axis = 1)
   # Write to CSV
-  result.to_csv(EXPERIMENT_PATH + 'experiment_results_' + strategy + '.csv')
-  
-## Report time and memory usage
+  result.to_csv(OUTPUT_PATH + 'experiment_results_' + strategy + '.csv')
+
+
+### Report time and memory usage
 # Record end time
 end = time.time()
 
-# Print the difference between start and end time in milli. secs
-print("The time of execution of the above program is :", (end - start) * 10**3, "ms")
-
-# Display memory usage
-print("The memory usage of the above program (current memory, peak memory) is :", tracemalloc.get_traced_memory())
-
-computational_requirements = pd.DataFrame(
+display(pd.DataFrame(
     data = {'Experiment': [(end - start)/60, tracemalloc.get_traced_memory()[1]/10**9]},
-    index = ['Time (min)', 'Memory Usage (GB)'])
-display(computational_requirements)
+    index = ['Time (min)', 'Memory Usage (GB)']))
  
 # Stopping the memory trace
 tracemalloc.stop()
