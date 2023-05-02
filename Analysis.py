@@ -20,9 +20,7 @@ from matplotlib import colors as plt_colors
 import seaborn as sns
 
 
-### Set table and chart defaults
-# Set precision
-pd.set_option('display.precision', 3)
+### Set chart defaults
 # Set dots per inches
 plt.rcParams['figure.dpi'] = 300
 plt.rcParams['savefig.dpi'] = 300
@@ -63,6 +61,9 @@ for index, (d_name, d_values) in enumerate(demographics.items()):
                x = "Hour after admission", y = "Cumulative number of Lab Events", 
                hue = d_name, hue_order = d_values['populations'][::-1]).set(title = 'Cumulative Lab Events by ' + d_name)
 
+# Set precision
+pd.set_option('display.precision', 1)
+
 # Data for bar plot
 lab_event_count = labs.groupby('SUBJECT_ID').size()
 
@@ -78,11 +79,11 @@ for index, (d_name, d_values) in enumerate(demographics.items()):
   majority_num_labs = labs.loc[majority_subj_ids].notna().sum().sum()
 
   lab_stats = pd.DataFrame(
-      data = {d_values['populations'][1]: [majority_num_events, majority_num_labs / len(majority_subj_ids)],
-              d_values['populations'][0]: [minority_num_events, minority_num_labs / len(minority_subj_ids)]},
-      index = ['Avg # Lab Events', 'Avb # Lab Tests'])
+      data = {d_values['populations'][1]: [len(majority_subj_ids), majority_num_events, majority_num_labs / len(majority_subj_ids)],
+              d_values['populations'][0]: [len(minority_subj_ids), minority_num_events, minority_num_labs / len(minority_subj_ids)]},
+      index = ['# of Patients', 'Avg # Lab Events', 'Avg # Lab Tests'])
   axes = plt.subplot(1, 4, index + 1)
-  lab_stats.plot.barh(ax = axes, width = 0.7)
+  lab_stats.loc[['Avg # Lab Events', 'Avg # Lab Tests']].plot.barh(ax = axes, width = 0.7)
   if index != 0:
     plt.yticks([])
   for c in axes.containers:
@@ -166,6 +167,9 @@ metric_list = ['AUC ROC', 'Prioritized Percentage', 'Wrongly not prioritized (FN
 
 
 ### Compare results for minority vs majority population
+# Set precision
+pd.set_option('display.precision', 3)
+
 # Format gap metric results into clean dataframe
 gap_metrics_df = pd.DataFrame([[demographic, strategy, metric, value]
                                for demographic, d in gap_metrics.items()

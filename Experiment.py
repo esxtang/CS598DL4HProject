@@ -22,7 +22,7 @@ from IPython.display import display
 
 ### Set path for getting data
 PREPROCESSED_DATA_PATH = './PreprocessedData/'
-OUTPUT_PATH = './ExperimentResults/'
+EXPERIMENT_RESULTS_PATH = './ExperimentResults/'
 
 
 ### Get preprocessed data
@@ -200,7 +200,7 @@ for strategy, iterations in imputation_iterations.items():
   predictions_death_values = pd.concat([p[1] for p in predictions], axis = 1)
   result = pd.concat([predictions_death_values.mean(axis = 1).rename('Mean'), predictions_death_values.std(axis = 1).rename('Std'), last_train_test_labels], axis = 1)
   # Write to CSV
-  result.to_csv(OUTPUT_PATH + 'experiment_results_' + strategy + '.csv')
+  result.to_csv(EXPERIMENT_RESULTS_PATH + 'experiment_results_' + strategy + '.csv')
 
 
 ### Report time and memory usage
