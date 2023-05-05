@@ -1,17 +1,14 @@
-### Start tracking time and memory usage
-# Import time & memory modules
+### Import libraries
 import time
 import tracemalloc
- 
-# Starting the monitoring
-start = time.time()
-tracemalloc.start()
-
-
-### Import libraries
 import numpy as np
 import pandas as pd
 from IPython.display import display
+
+
+### Start tracking time and memory usage
+start = time.time()
+tracemalloc.start()
 
 
 ### Path for file access
@@ -49,13 +46,9 @@ MIMIC_III_admissions = pd.read_csv(
 # Combine PATIENTS and ADMISSIONS data
 admissions = MIMIC_III_admissions.merge(MIMIC_III_patients, on = 'SUBJECT_ID')
 
-print(admissions.shape)
-admissions.head()
-
+# Add Length of Stay between Admission and Death (unit is fraction of a day)
 zero_days = pd.to_timedelta('0 days')
 one_day = pd.to_timedelta('1 day')
-
-# Add Length of Stay between Admission and Death (unit is fraction of a day)
 admissions['LOS_DEATH'] = (admissions['DEATHTIME'] - admissions['ADMITTIME']) / one_day
 
 # Add Length of Stay between Admission and Discharge (unit is days)
@@ -89,17 +82,11 @@ adult_admissions = adult_admissions[~adult_admissions.index.duplicated(keep = 'l
 # Keep only patients whose length of stay before discharge is >=1 day
 LOSgte1_adult_admissions = adult_admissions[adult_admissions['LOS_DISCHARGE'] >= one_day]
 
-print(LOSgte1_adult_admissions.shape)
-LOSgte1_adult_admissions.head()
-
 
 ### Clean Item Id to Variable Map
 # Remove rows with blank LEVEL2, COUNT <= 0, or STATUS != 'ready'
 itemid_to_variable_map = MIMIC_Extract_itemid_to_variable_map.dropna(subset = ['LEVEL2'])
 itemid_to_variable_map = itemid_to_variable_map[(itemid_to_variable_map['COUNT'] > 0) & (itemid_to_variable_map['STATUS'] == 'ready')]
-
-print(itemid_to_variable_map.shape)
-itemid_to_variable_map.head()
 
 
 ### Clean Lab data
@@ -125,9 +112,6 @@ day1_lab_events = subset_lab_events[((subset_lab_events['LOS_LAB_EVENT'] < one_d
 # Change LOS_LAB_EVENT from days into fractions of a day
 day1_lab_events['LOS_LAB_EVENT'] = day1_lab_events['LOS_LAB_EVENT'] / one_day
 
-print(day1_lab_events.shape)
-day1_lab_events.head()
-
 
 ### Reformat Lab data
 # Select certain columns
@@ -146,9 +130,6 @@ day1_lab_events.head()
 ### Filter Patient Admissions set to only include those with Lab records
 LOSgte1_adult_admissions = LOSgte1_adult_admissions.loc[day1_lab_events.index.get_level_values(0).unique()]
 
-print(LOSgte1_adult_admissions.shape)
-LOSgte1_adult_admissions.head()
-
 
 ### Convert values to binary labels
 labeled_LOSgte1_adult_admissions = LOSgte1_adult_admissions.copy(deep = True)
@@ -157,9 +138,6 @@ labeled_LOSgte1_adult_admissions['Outcome'] = (labeled_LOSgte1_adult_admissions[
 labeled_LOSgte1_adult_admissions['ETHNICITY'] = (labeled_LOSgte1_adult_admissions['ETHNICITY'].str.contains('BLACK')).replace({True: 'Black', False: 'Non Black'})
 labeled_LOSgte1_adult_admissions['GENDER'] = (labeled_LOSgte1_adult_admissions['GENDER'] == 'F').replace({True: 'Female', False: 'Male'})
 labeled_LOSgte1_adult_admissions['INSURANCE'] = (labeled_LOSgte1_adult_admissions['INSURANCE'] == 'Private').replace({True: 'Private', False: 'Public'})
-
-print(labeled_LOSgte1_adult_admissions.shape)
-labeled_LOSgte1_adult_admissions.head()
 
 
 ### Save files
