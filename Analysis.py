@@ -64,7 +64,6 @@ def getExperimentResults():
 def displayDatasetStatistics(labs, outcomes, demographics, showTables = True, showPlots = True):
   # Set chart defaults
   pd.set_option('display.precision', 1)
-  sns.set_theme(style = "darkgrid", font_scale = 1, rc = {'figure.dpi':300, 'savefig.dpi':300})
 
   if showPlots:
     # Data for line plot of lab events over time for each population
@@ -199,69 +198,61 @@ def getAllMetrics(demographics, outcomes, predictions):
 
 
 ### Display results for each metric for each population
-def displayPopulationMetrics(metric_list, average_metrics_df, strategies = ['Median', 'MICE', 'Group MICE', 'Group MICE Missing'], populations = ['ETHNICITY', 'GENDER', 'INSURANCE', 'OVERALL'], strategy_colors = ['tab:gray', 'tab:pink', 'tab:cyan', 'tab:blue'], showTables = True):
+def displayPopulationMetrics(metric, average_metrics_df, strategies = ['Median', 'MICE', 'Group MICE', 'Group MICE Missing'], populations = ['ETHNICITY', 'GENDER', 'INSURANCE', 'OVERALL'], strategy_colors = ['tab:gray', 'tab:pink', 'tab:cyan', 'tab:blue'], ax = None, showLegend = True):
   # Set chart defaults
   pd.set_option('display.precision', 3)
-  sns.set_theme(style = "darkgrid", font_scale = 1, rc = {'figure.dpi':300, 'savefig.dpi':300})
-    
-  # Display results for each metric
-  plt.subplots(figsize=(len(metric_list) * 10, 4))
-  plt.subplots_adjust(wspace = 0.1)
+  plt.ioff()
+  
+  # Clean dataframe for this metric
+  this_avg_metric = average_metrics_df[['Demographic', 'Population', 'Strategy', 'Value']][average_metrics_df['Metric'] == metric].pivot(index = ['Demographic', 'Population'], columns = 'Strategy')
+  this_avg_metric.columns = this_avg_metric.columns.droplevel(0)
+  this_avg_metric = this_avg_metric[strategies].reindex(['Black', 'Non Black', 'Female', 'Male', 'Public', 'Private', 'Overall'], level = 1)   
 
-  for index, metric in enumerate(metric_list):
-    # Display tables for each metric
-    this_avg_metric = average_metrics_df[['Demographic', 'Population', 'Strategy', 'Value']][average_metrics_df['Metric'] == metric].pivot(index = ['Demographic', 'Population'], columns = 'Strategy')
-    this_avg_metric.columns = this_avg_metric.columns.droplevel(0)
-    this_avg_metric = this_avg_metric[strategies].reindex(['Black', 'Non Black', 'Female', 'Male', 'Public', 'Private', 'Overall'], level = 1)
-    if showTables:
-      print('-------', metric, '(Average)', '-------')
-      display(this_avg_metric)
-
-    # Display bar graph for each metric
-    axes = plt.subplot(1, len(metric_list), index + 1)
-    this_avg_metric.loc[populations].plot.bar(ax = axes, width = 0.8, color = strategy_colors)
-    # Format & hide legend
-    axes.legend(ncol = 4, loc='upper left', bbox_to_anchor=(0.0, 1.25), title = 'Imputation strategies')
-    if index != 0:
-      axes.get_legend().remove()
-    # Format plot
-    plt.ylabel('')
-    plt.xlabel(metric)
-    for c in axes.containers:
-      plt.bar_label(c, fmt = '%.3f', rotation = 'vertical', label_type = 'center', color = 'white')
+  # Bar plot for each metric
+  this_avg_metric.loc[populations].plot.bar(ax = ax, width = 0.8, color = strategy_colors)
+  # Format legend
+  if showLegend:
+    ax.legend(ncol = 4, loc='upper left', bbox_to_anchor=(0.0, 1.3), title = 'Imputation strategies')
+  else:
+    ax.get_legend().remove()    
+  # Label bars
+  for c in ax.containers:
+    ax.bar_label(c, fmt = '%.3f', rotation = 'vertical', label_type = 'center', color = 'white')
+  # Format plot
+  ax.set_xlabel(metric)
+  if (len(populations) == 1):
+    ax.set_xticklabels(ax.get_xticklabels(), rotation = 0, ha = 'center')
+  
+  return this_avg_metric, ax
     
     
 ### Compare results for minority vs majority population
-def displayMinorityMajorityComparison(metric_list, gap_metrics_df, strategies = ['Group MICE Missing', 'Group MICE', 'MICE', 'Median'], populations = ['ETHNICITY', 'GENDER', 'INSURANCE'], strategy_colors = ['tab:blue', 'tab:cyan', 'tab:pink', 'tab:gray'], showTables = True):
+def displayMinorityMajorityComparison(metric, gap_metrics_df, strategies = ['Group MICE Missing', 'Group MICE', 'MICE', 'Median'], populations = ['ETHNICITY', 'GENDER', 'INSURANCE'], strategy_colors = ['tab:blue', 'tab:cyan', 'tab:pink', 'tab:gray'], ax = None, showLegend = True):
   # Set chart defaults
   pd.set_option('display.precision', 3)
-  sns.set_theme(style = "darkgrid", font_scale = 1, rc = {'figure.dpi':300, 'savefig.dpi':300})
+  plt.ioff()
+  
+  # Clean dataframe for this metric
+  this_gap_metric = gap_metrics_df[['Demographic', 'Strategy', 'Value']][gap_metrics_df['Metric'] == metric].pivot(index = 'Demographic', columns = 'Strategy')
+  this_gap_metric.columns = this_gap_metric.columns.droplevel(0)
+  this_gap_metric = this_gap_metric[strategies]
 
-  # Display results for each gap metric
-  plt.subplots(figsize=(len(metric_list) * 6, 5))
-  for index, metric in enumerate(metric_list):
-    # Display tables for each metric
-    this_gap_metric = gap_metrics_df[['Demographic', 'Strategy', 'Value']][gap_metrics_df['Metric'] == metric].pivot(index = 'Demographic', columns = 'Strategy')
-    this_gap_metric.columns = this_gap_metric.columns.droplevel(0)
-    this_gap_metric = this_gap_metric[strategies]
-    if showTables:
-      print('-------', metric, '(Minority vs Majority Gap)', '-------')
-      display(this_gap_metric[this_gap_metric.columns[::-1]])
+  # Bar plot for each metric
+  this_gap_metric.loc[populations].plot.barh(ax = ax, width = 0.7, color = strategy_colors)
+  # Format legend
+  if showLegend:
+    ax.legend(ncol = 4, loc='upper left', bbox_to_anchor=(0.0, 1.3), title = 'Imputation strategies')
+  else:
+    ax.get_legend().remove()    
+  # Label bars
+  for c in ax.containers:
+    ax.bar_label(c, fmt = '%.3f')
+  # Format plot
+  ax.set_xlim(-0.4, 0.4)
+  ax.set_xlabel('$\Delta$ {}'.format(metric))
+  ax.set_ylabel('')
+  ax.set_yticklabels(ax.get_yticklabels(), rotation = 90, va = 'center')
+  ax.vlines(0, -1, 1, ls = '--', alpha = 0.5)
+  ax.invert_yaxis()
 
-    # Display bar graph for each metric
-    axes = plt.subplot(1, len(metric_list), index + 1)
-    this_gap_metric.loc[populations].plot.barh(ax = axes, width = 0.7, color = strategy_colors)
-    # Format & hide legend
-    axes.legend(ncol = 4, loc='upper left', bbox_to_anchor=(0.0, 1.2), title = 'Imputation strategies')
-    if index != 0:
-      axes.get_legend().remove()
-    # Format plot
-    plt.ylabel('')
-    if index != 0:
-      plt.yticks([])
-    plt.xlim(-0.30, 0.30)
-    plt.axvline(0, ls = '--', alpha = 0.5, c = 'k')
-    plt.xlabel('$\Delta$ {}'.format(metric))
-    for c in axes.containers:
-      plt.bar_label(c, fmt = '%.3f')
-    plt.gca().invert_yaxis()
+  return this_gap_metric, ax
