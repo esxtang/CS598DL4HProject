@@ -5,18 +5,18 @@ This code is developed as part of the final project for the CS598 Deep Learning 
 
 The paper I have chosen to reproduce is [_Imputation Strategies Under Clinical Presence: Impact on Algorithmic Fairness_](https://proceedings.mlr.press/v193/jeanselme22a/jeanselme22a.pdf) by Jeanselme et al. (2022)[^1]. The original code provided by the authors is available [here](https://github.com/Jeanselme/ClinicalPresenceFairness).
 
-### To run the experiments, please do the following:
+### To run the experiments either use the [Descriptive Notebook](https://github.com/esxtang/CS598DL4HProject/blob/master/Descriptive%20Notebook.ipynb) or follow these steps:
 1. Obtain MIMIC-III data. The data required to run the experiments is in the MIMIC-III dataset, which is available on [PhysioNet](https://physionet.org/content/mimiciii/1.4/). Once you have obtained access to the MIMIC-III dataset, place the ADMISSIONS.csv, LABEVENTS.csv, and PATIENTS.csv files in the MimicData folder. 
 2. Obtain the itemid_to_variable_map.csv file from [MIMIC_Extract](https://github.com/MLforHealth/MIMIC_Extract/blob/master/resources/itemid_to_variable_map.csv). Add this file to the MimicData folder.
-3. Run the Preprocessing.py code. This will produce two files (preprocessed_labeled_outcomes.csv and preprocessed_labs.csv) that will be stored in the PreprocessedData folder.
-4. Run the Experiment.py code. This will produce 4 files (experiment_results_Median.csv, experiment_results_MICE.csv, experiment_results_Group MICE.csv, and experiment_results_Group MICE Missing.csv) that will be stored in the ExperimentResults folder.
-5. Run the Analysis.py code to view the results of the experiments.
+3. Run the [Preprocessing.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Preprocessing.py) code. This will produce two files (preprocessed_labeled_outcomes.csv and preprocessed_labs.csv) that will be stored in the PreprocessedData folder.
+4. Run the [Experiment.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Experiment.py) code. This will produce 4 files (experiment_results_Median.csv, experiment_results_MICE.csv, experiment_results_Group MICE.csv, and experiment_results_Group MICE Missing.csv) that will be stored in the ExperimentResults folder.
+5. Run the [Analysis.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Analysis.py) code to view the results of the experiments.
 
 ### These are the results obtained by running my code:
 
 Average number of lab events and tests per patient, stratified by demographic group:
 
-![image](https://user-images.githubusercontent.com/63872692/235328520-13d41ddb-7a32-41a5-9413-eae2a44fc858.png)
+![Labs by Demographic - Bar](https://user-images.githubusercontent.com/63872692/236651634-1f9608b5-2f78-4689-84e6-5591efcc4f2a.png)
 
 Average AUC ROC score, prioritized percentage, and wrongly not prioritized rate (FNR), stratified by demographic group:
 
