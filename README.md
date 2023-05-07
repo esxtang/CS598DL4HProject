@@ -16,7 +16,7 @@ The paper I have chosen to reproduce is [_Imputation Strategies Under Clinical P
 
 Average number of lab events and tests per patient, stratified by demographic group:
 
-![Labs by Demographic - Bar](https://user-images.githubusercontent.com/63872692/236651634-1f9608b5-2f78-4689-84e6-5591efcc4f2a.png)
+![Labs by Demographic - Bar](https://user-images.githubusercontent.com/63872692/236654911-3dc937e8-6ae2-4b02-9660-6deff289a8b8.png)
 
 Average AUC ROC score, prioritized percentage, and wrongly not prioritized rate (FNR), stratified by demographic group:
 
