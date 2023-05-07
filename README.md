@@ -8,9 +8,10 @@ The paper I have chosen to reproduce is [_Imputation Strategies Under Clinical P
 ### To run the experiments either use the [Descriptive Notebook](https://github.com/esxtang/CS598DL4HProject/blob/master/Descriptive%20Notebook.ipynb) or follow these steps:
 1. Obtain MIMIC-III data. The data required to run the experiments is in the MIMIC-III dataset, which is available on [PhysioNet](https://physionet.org/content/mimiciii/1.4/). Once you have obtained access to the MIMIC-III dataset, place the ADMISSIONS.csv, LABEVENTS.csv, and PATIENTS.csv files in the MimicData folder. 
 2. Obtain the itemid_to_variable_map.csv file from [MIMIC_Extract](https://github.com/MLforHealth/MIMIC_Extract/blob/master/resources/itemid_to_variable_map.csv). Add this file to the MimicData folder.
-3. Run the [Preprocessing.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Preprocessing.py) code. This will produce two files (preprocessed_labeled_outcomes.csv and preprocessed_labs.csv) that will be stored in the PreprocessedData folder.
-4. Run the [Experiment.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Experiment.py) code. This will produce 4 files (experiment_results_Median.csv, experiment_results_MICE.csv, experiment_results_Group MICE.csv, and experiment_results_Group MICE Missing.csv) that will be stored in the ExperimentResults folder.
-5. Run the [Analysis.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Analysis.py) code to view the results of the experiments.
+3. Install dependencies using `pip install -r requirements.txt`
+4. Run the [Preprocessing.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Preprocessing.py) code. This will produce two files (preprocessed_labeled_outcomes.csv and preprocessed_labs.csv) that will be stored in the PreprocessedData folder.
+5. Run the [Experiment.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Experiment.py) code. This will produce 4 files (experiment_results_Median.csv, experiment_results_MICE.csv, experiment_results_Group MICE.csv, and experiment_results_Group MICE Missing.csv) that will be stored in the ExperimentResults folder.
+6. Run the [Analysis.py](https://github.com/esxtang/CS598DL4HProject/blob/master/Analysis.py) code to view the results of the experiments.
 
 ### These are the results obtained by running my code:
 
