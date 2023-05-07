@@ -10,32 +10,6 @@ import matplotlib.pyplot as plt
 from matplotlib import colors as plt_colors
 import seaborn as sns
 
-
-def main():
-  # Start tracking time and memory usage 
-  start = time.time()
-  tracemalloc.start()
-
-  # Get experiment results 
-  labs, outcomes, predictions, demographics = getExperimentResults()
-  # Show dataset stats
-  displayDatasetStatistics(labs, outcomes, demographics)
-  # Display all metrics
-  all_average_metrics, all_gap_metrics = getAllMetrics(demographics, outcomes, predictions)
-  metric_list = ['AUC ROC', 'Prioritized Percentage', 'Wrongly not prioritized (FNR)']
-  displayPopulationMetrics(metric_list, all_average_metrics)
-  displayMinorityMajorityComparison(metric_list, all_gap_metrics)
-
-  # Report time and memory usage
-  end = time.time()
-  display(pd.DataFrame(
-    data = {'Analysis': [(end - start)/60, tracemalloc.get_traced_memory()[1]/10**9]},
-    index = ['Time (min)', 'Memory Usage (GB)']))
-  tracemalloc.stop()
-
-if __name__ == "__main__":
-  main()
-
     
 ### Get experiment results
 def getExperimentResults():
@@ -61,52 +35,72 @@ def getExperimentResults():
 
 
 ### Get dataset population statistics
-def displayDatasetStatistics(labs, outcomes, demographics, showTables = True, showPlots = True):
-  # Set chart defaults
-  pd.set_option('display.precision', 1)
-
-  if showPlots:
-    # Data for line plot of lab events over time for each population
-    bins = np.linspace(0, 24, endpoint = True)
-    evolution = labs.groupby('SUBJECT_ID').apply(lambda x: pd.DataFrame({
-    'Cumulative number of Lab Events': np.histogram(24 * x.index.get_level_values('LOS_LAB_EVENT'), bins)[0].cumsum(), 
-    'Hour after admission': bins[1:]}))
-    # Display line plot
-    fig, axes = plt.subplots(1, 4, figsize = (18, 3))
-    for index, (d_name, d_values) in enumerate(demographics.items()):
-      sns.lineplot(ax = axes[index], data = evolution.join(d_values['data']),
-                   x = "Hour after admission", y = "Cumulative number of Lab Events", 
-                   hue = d_name, hue_order = d_values['populations'][::-1]).set(title = 'Cumulative Lab Events by ' + d_name)  
-
-  # Data for table and bar plot of average lab events and tests for each population
+def getDatasetStatistics(labs, outcomes, demographics):
+  dataset_stats = {}
   lab_event_count = labs.groupby('SUBJECT_ID').size()
-  # Display bar plot and table
-  if showPlots:
-    plt.subplots(figsize=(18, 3))
+    
+  # For whole population
+  all_subj_ids = outcomes.index
+  all_num_events = lab_event_count.mean()
+  all_num_labs = labs.notna().sum().sum()
+    
+  dataset_stats['Overall'] = {
+    'All Patients': {
+      '# of Patients': len(all_subj_ids), 
+      'Avg # Lab Events': all_num_events, 
+      'Avg # Lab Tests': all_num_labs / len(all_subj_ids)
+    }
+  }
+  # For each population
   for index, (d_name, d_values) in enumerate(demographics.items()):
     minority_subj_ids = outcomes[outcomes[d_name] == d_values['populations'][0]].index
     minority_num_events = lab_event_count[minority_subj_ids].mean()
     minority_num_labs = labs.loc[minority_subj_ids].notna().sum().sum()  
+    
     majority_subj_ids = outcomes[outcomes[d_name] == d_values['populations'][1]].index
     majority_num_events = lab_event_count[majority_subj_ids].mean()
     majority_num_labs = labs.loc[majority_subj_ids].notna().sum().sum()
 
-    lab_stats = pd.DataFrame(
-      data = {
-        d_values['populations'][1]: [len(majority_subj_ids), majority_num_events, majority_num_labs / len(majority_subj_ids)],
-        d_values['populations'][0]: [len(minority_subj_ids), minority_num_events, minority_num_labs / len(minority_subj_ids)]},
-      index = ['# of Patients', 'Avg # Lab Events', 'Avg # Lab Tests'])
+    dataset_stats[d_name] = {
+      d_values['populations'][1]: {
+        '# of Patients': len(majority_subj_ids), 
+        'Avg # Lab Events': majority_num_events, 
+        'Avg # Lab Tests': majority_num_labs / len(majority_subj_ids)},
+      d_values['populations'][0]: {
+        '# of Patients': len(minority_subj_ids), 
+        'Avg # Lab Events': minority_num_events, 
+        'Avg # Lab Tests': minority_num_labs / len(minority_subj_ids)
+      }
+    }
     
-    if showTables:
-      display(lab_stats)
-    
-    if showPlots:
-      axes = plt.subplot(1, 4, index + 1)
-      lab_stats.loc[['Avg # Lab Events', 'Avg # Lab Tests']].plot.barh(ax = axes, width = 0.7)
-      if index != 0:
-        plt.yticks([])
-      for c in axes.containers:
-        plt.bar_label(c, fmt='%.1f', label_type = 'center', color = 'white')
+  return pd.DataFrame.from_dict({(i,j): dataset_stats[i][j] 
+                                 for i in dataset_stats.keys() 
+                                 for j in dataset_stats[i].keys()},
+                                orient='index')
+        
+def displayDatasetStatisticsPlots(labs, outcomes, demographics, dataset_stats):
+  # Line plot of lab events over time for each population
+  bins = np.linspace(0, 24, endpoint = True)
+  evolution = labs.groupby('SUBJECT_ID').apply(lambda x: pd.DataFrame({
+      'Cumulative # of Lab Events': np.histogram(24 * x.index.get_level_values('LOS_LAB_EVENT'), bins)[0].cumsum(), 
+      'Hour after admission': bins[1:]}))
+  fig, axes = plt.subplots(1, 4, figsize = (18, 3))
+  for index, (d_name, d_values) in enumerate(demographics.items()):
+    sns.lineplot(ax = axes[index], data = evolution.join(d_values['data']),
+                 x = "Hour after admission", y = "Cumulative # of Lab Events", 
+                 hue = d_name, hue_order = d_values['populations'][::-1]).set(title = 'Cumulative Lab Events by ' + d_name)  
+
+  # Bar plot of average lab events and tests for each population
+  plt.subplots(figsize=(18, 3))
+  for index, (d_name, d_values) in enumerate(demographics.items()):
+    this_demo_stats = dataset_stats.loc[[(d_name, d_values['populations'][1]), (d_name, d_values['populations'][0])]].T.loc[['Avg # Lab Events', 'Avg # Lab Tests']]
+    this_demo_stats.columns = this_demo_stats.columns.droplevel(0)    
+    axes = plt.subplot(1, 4, index + 1)
+    this_demo_stats.plot.barh(ax = axes, width = 0.7, color = ('#4a6faa', '#db8454'))
+    if index != 0:
+      plt.yticks([])
+    for c in axes.containers:
+      plt.bar_label(c, fmt='%.1f', label_type = 'center', color = 'white')
 
 
 ### Calculate AUC ROC, Prioritized Percentage, and Wrongly not prioritized (FNR)
@@ -199,8 +193,7 @@ def getAllMetrics(demographics, outcomes, predictions):
 
 ### Display results for each metric for each population
 def displayPopulationMetrics(metric, average_metrics_df, strategies = ['Median', 'MICE', 'Group MICE', 'Group MICE Missing'], populations = ['ETHNICITY', 'GENDER', 'INSURANCE', 'OVERALL'], strategy_colors = ['tab:gray', 'tab:pink', 'tab:cyan', 'tab:blue'], ax = None, showLegend = True):
-  # Set chart defaults
-  pd.set_option('display.precision', 3)
+  # Don't auto show plots
   plt.ioff()
   
   # Clean dataframe for this metric
@@ -228,8 +221,7 @@ def displayPopulationMetrics(metric, average_metrics_df, strategies = ['Median',
     
 ### Compare results for minority vs majority population
 def displayMinorityMajorityComparison(metric, gap_metrics_df, strategies = ['Group MICE Missing', 'Group MICE', 'MICE', 'Median'], populations = ['ETHNICITY', 'GENDER', 'INSURANCE'], strategy_colors = ['tab:blue', 'tab:cyan', 'tab:pink', 'tab:gray'], ax = None, showLegend = True):
-  # Set chart defaults
-  pd.set_option('display.precision', 3)
+  # Don't auto show plots
   plt.ioff()
   
   # Clean dataframe for this metric
@@ -252,7 +244,70 @@ def displayMinorityMajorityComparison(metric, gap_metrics_df, strategies = ['Gro
   ax.set_xlabel('$\Delta$ {}'.format(metric))
   ax.set_ylabel('')
   ax.set_yticklabels(ax.get_yticklabels(), rotation = 90, va = 'center')
-  ax.vlines(0, -1, 1, ls = '--', alpha = 0.5)
+  ax.vlines(0, -3, 3, ls = '--', alpha = 0.5)
   ax.invert_yaxis()
 
   return this_gap_metric, ax
+
+
+### Run analysis 
+def main():
+  # Start tracking time and memory usage 
+  start = time.time()
+  tracemalloc.start()
+
+  # Get experiment results 
+  labs, outcomes, predictions, demographics = getExperimentResults()
+  
+  # Set plot defaults
+  sns.set_theme(style = "darkgrid")
+
+  # Show dataset stats
+  pd.set_option('display.precision', 1)
+  dataset_stats = getDatasetStatistics(labs, outcomes, demographics)
+  display(dataset_stats)
+  displayDatasetStatisticsPlots(labs, outcomes, demographics, dataset_stats)
+  plt.tight_layout()
+  plt.show()
+  
+  # Get all metrics
+  pd.set_option('display.precision', 3)
+  all_average_metrics, all_gap_metrics = getAllMetrics(demographics, outcomes, predictions)
+  metric_list = ['AUC ROC', 'Prioritized Percentage', 'Wrongly not prioritized (FNR)']
+  
+  # Display results for each population
+  fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(24, 6))
+  axes = [ax1, ax2, ax3]
+  for i in range(len(axes)):
+    showLegend = True
+    if i > 0:
+      showLegend = False
+    data, _ = displayPopulationMetrics(metric_list[i], all_average_metrics, ax = axes[i], showLegend = showLegend)
+    print("Average", metric_list[i])
+    display(data)
+  fig.subplots_adjust(wspace = 0.15)
+  plt.tight_layout()
+  plt.show()
+  
+  # Compare results for Minority vs Majority populations
+  fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(24, 6))
+  axes = [ax1, ax2, ax3]
+  for i in range(len(axes)):
+    showLegend = True
+    if i > 0:
+      showLegend = False
+    data, _ = displayMinorityMajorityComparison(metric_list[i], all_gap_metrics, ax = axes[i], showLegend = showLegend)
+    print("Minority vs Majority Gap:", metric_list[i])
+    display(data[['Median', 'MICE', 'Group MICE', 'Group MICE Missing']])   
+  plt.tight_layout()
+  plt.show()
+
+  # Report time and memory usage
+  end = time.time()
+  display(pd.DataFrame(
+    data = {'Analysis': [(end - start)/60, tracemalloc.get_traced_memory()[1]/10**9]},
+    index = ['Time (min)', 'Memory Usage (GB)']))
+  tracemalloc.stop()
+
+if __name__ == "__main__":
+  main()
