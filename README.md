@@ -20,9 +20,9 @@ Average number of lab events and tests per patient, stratified by demographic gr
 
 Average AUC ROC score, prioritized percentage, and wrongly not prioritized rate (FNR), stratified by demographic group:
 
-<img src="https://user-images.githubusercontent.com/63872692/235328816-c3949395-cec2-49dd-a053-aa05ca02ff07.jpg" width="60%">
+![Population Results Table](https://user-images.githubusercontent.com/63872692/236652580-a5a38a4e-863a-4760-bf00-365af1eca6c8.png)
 
-![image](https://user-images.githubusercontent.com/63872692/235328775-c1071db2-fedc-4872-b7bc-cd1959b7fe6b.png)
+![Population Results Bars](https://user-images.githubusercontent.com/63872692/236652617-d2edb2bc-569f-40d2-b5c8-2f4678bc1c38.png)
 
 Differences in average AUC ROC score, prioritized percentage, and wrongly not prioritized rate (FNR) for the minority population versus the majority population:
 
@@ -32,9 +32,9 @@ GENDER: Minority = Female, Majority = Male
 
 INSURANCE: Minority = Public, Majority = Private
 
-<img src="https://user-images.githubusercontent.com/63872692/235328812-fb212240-69dd-4b18-863e-05da941c0e7b.jpg" width="60%">
+![Population Delta Table](https://user-images.githubusercontent.com/63872692/236652901-912df800-e8cd-4895-b00a-ecebe487d759.png)
 
-![image](https://user-images.githubusercontent.com/63872692/235328602-ec7e64f6-291b-49ef-a971-ebfe085c30d3.png)
+![Population Delta Bars](https://user-images.githubusercontent.com/63872692/236652862-202ce6b5-6803-4402-874b-6ea1d1de91f6.png)
 
 
 [^1]: Original paper: Jeanselme, V., De-Arteaga, M., Zhang, Z., Barrett, J., & Tom, B. (2022, November). Imputation Strategies Under Clinical Presence: Impact on Algorithmic Fairness. In _Machine Learning for Health_ (pp. 12-34). PMLR.
