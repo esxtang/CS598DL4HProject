@@ -12,48 +12,6 @@ from sklearn.preprocessing import StandardScaler
 from IPython.display import display
 
 
-def main():
-  # Start tracking time and memory usage 
-  start = time.time()
-  tracemalloc.start()
-
-  # Select model parameters and run experiment
-  imputation_iterations = {
-    'Median': 100,
-    'MICE': 10,
-    'Group MICE': 10,
-    'Group MICE Missing': 10
-  }
-  hyperparameters = {
-    'logistic_regression': {
-        'penalty': ['l2'],
-        'C': [0.01, 0.1, 1., 10],
-        'solver': ['sag'], 
-        'max_iter': [1000],
-        'n_jobs': [-1]
-    },
-    'mlp_classifier': {
-        'hidden_layer_sizes': [(5, 2)],
-        'activation': ['logistic'],
-        'solver': ['adam'], 
-        'max_iter': [1000]
-    }
-  }
-  # Ablation: To remove regularization, call experiment method with regularization = False
-  # Experiment: To test MLP Classifier, call experiment method with model_name = 'mlp_classifier'
-  experiment(imputation_iterations, hyperparameters, regularization = True, model_name = 'logistic_regression')
-
-  # Report time and memory usage
-  end = time.time()
-  display(pd.DataFrame(
-    data = {'Experiment': [(end - start)/60, tracemalloc.get_traced_memory()[1]/10**9]},
-    index = ['Time (min)', 'Memory Usage (GB)']))
-  tracemalloc.stop()
-
-if __name__ == "__main__":
-  main()
-
-
 ### Experiment method
 def experiment(imputation_iterations, hyperparameters, regularization, model_name):
   # Set path for getting data
@@ -187,3 +145,46 @@ def train(imputed_labs, outcomes, all_train_indices, model_name, hyperparameters
   prediction = pd.DataFrame(best_model.predict_proba(imputed_labs), index = outcomes.index)
   result = pd.concat([prediction, train_test_labels], axis = 1)
   return result
+
+
+### Run the experiment
+def main():
+  # Start tracking time and memory usage 
+  start = time.time()
+  tracemalloc.start()
+
+  # Select model parameters and run experiment
+  imputation_iterations = {
+    'Median': 100,
+    'MICE': 10,
+    'Group MICE': 10,
+    'Group MICE Missing': 10
+  }
+  hyperparameters = {
+    'logistic_regression': {
+        'penalty': ['l2'],
+        'C': [0.01, 0.1, 1., 10],
+        'solver': ['sag'], 
+        'max_iter': [1000],
+        'n_jobs': [-1]
+    },
+    'mlp_classifier': {
+        'hidden_layer_sizes': [(5, 2)],
+        'activation': ['logistic'],
+        'solver': ['adam'], 
+        'max_iter': [1000]
+    }
+  }
+  # Ablation: To remove regularization, call experiment method with regularization = False
+  # Experiment: To test MLP Classifier, call experiment method with model_name = 'mlp_classifier'
+  experiment(imputation_iterations, hyperparameters, regularization = True, model_name = 'logistic_regression')
+
+  # Report time and memory usage
+  end = time.time()
+  display(pd.DataFrame(
+    data = {'Experiment': [(end - start)/60, tracemalloc.get_traced_memory()[1]/10**9]},
+    index = ['Time (min)', 'Memory Usage (GB)']))
+  tracemalloc.stop()
+
+if __name__ == "__main__":
+  main()
